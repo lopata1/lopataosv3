@@ -19,26 +19,30 @@ CKOBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(CKSOURCES))
 
 #$(BUILD_DIR)/
 
-all: kernel
-	echo "build done"
+all: make_build_dirs bootloader kernel
+	cat $(BOOT_DIR)/boot.bin $(BOOT_DIR)/kernel.bin > $(BOOT_DIR)/os.bin
+	@echo "build done"
 
 make_build_dirs:
 	@for dir in $(KERNEL_DIRS); do \
 		mkdir -p $(BUILD_DIR)/$(KERNEL_DIR)/$$dir; \
 	done
 
-
-kernel: make_build_dirs $(CKOBJECTS)
+bootloader:
 	mkdir -p $(BUILD_DIR)/boot
 	$(AS) -f bin $(ARCH_DIR)/boot/boot.asm -o $(BOOT_DIR)/boot.bin
-	$(AS) -f elf $(ARCH_DIR)/boot/kentry.asm -o $(BUILD_DIR)/boot/kentry.o
-	$(LD) $(BUILD_DIR)/boot/kentry.o $(CKOBJECTS) $(LDFLAGS) -o $(BOOT_DIR)/kernel.bin
-	cat $(BOOT_DIR)/boot.bin $(BOOT_DIR)/kernel.bin > $(BOOT_DIR)/os.bin
+
+
+kernel: make_build_dirs $(CKOBJECTS)
+	$(LD) $(CKOBJECTS) $(LDFLAGS) -o $(BOOT_DIR)/kernel.bin
+
 
 $(BUILD_DIR)/%.o: %.c
-#	echo $(dir $@)
-#	[ ! -d "$(dir $@)" ] && mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $< -o $@
+
+floppy: all
+	dd if=$(BOOT_DIR)/os.bin of=$(BOOT_DIR)/floppy.img bs=512 count=2880
 
 clean:
 	rm -rf $(BUILD_DIR)/*
+	rm -rf $(BOOT_DIR)/*
